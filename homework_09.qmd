@@ -1,0 +1,165 @@
+---
+title: "Homework 9"
+author: Benjamin Anderson II
+format: pdf
+---
+
+```{r setup}
+#| message: false
+#| warning: false
+library(tidyverse)
+library(nycflights13)
+```
+
+# Functions
+
+## 1.
+
+(2 pts)
+
+In R, the function `t.test()` conducts one and two sample t-tests. For instance the following code runs Welch's two sample t-test using the `sleep` data in R:
+
+```{r}
+my_test_output <- t.test(extra ~ group, data = sleep)
+my_test_output
+```
+
+The exact meaning of this output is unimportant for this task, but imagine you are interested in the two numbers in the output labeled "95 percent confidence interval:", i.e the values `-3.3654832` and  `0.2054832`.
+
+**Verify that `my_test_output` is built on top of a list.  Then, return the names of the elements of that list**
+
+```{r}
+typeof(my_test_output)
+names(my_test_output)
+```
+
+**Use list subsetting to extract the values of interest from `my_test_output`.**
+
+```{r}
+my_test_output$conf.int
+```
+
+**Turn your code from the previous tasks into a function, called `conf_int()`, that extracts the confidence interval values from any `t.test()` output.**
+
+```{r}
+conf_int <- function(test){
+  test$conf.int
+}
+```
+
+Test your function by running:
+```{r}
+conf_int(my_test_output)
+```
+
+The output should be:
+
+```
+[1] -3.3654832  0.2054832
+attr(,"conf.level")
+[1] 0.95
+```
+
+## 2. 
+
+(2 pts)
+
+The following code is an example of taking two vectors of the same length and joining them together element-wise to create a single character vector:
+
+```{r}
+farm <- c(1, 1, 2, 2, 3, 4)
+field <- c("a", "b", "a", "b", "a", "a")
+paste(farm, field, sep = "_")
+```
+
+For instance, you might use this to generate a single identifying variable from a couple of variables.
+
+**Turn this code into a function called `join_with_underscore()`, that takes two vectors `x` and `y` as input, and joins them into a single character string.**
+
+```{r}
+join_with_underscore <- function(x, y){
+  paste(x, y, sep = "_")
+}
+```
+
+**Check that your function works by testing it with `farm` and `field`.**
+
+```{r}
+join_with_underscore(farm, field)
+```
+
+## 3.
+
+(1 pt)
+
+Reduce the repetition in this code by using `across()`:
+
+```{r}
+starwars |> 
+  mutate(
+    ## UNREDUCED ----
+    
+    #n_films = lengths(films),
+    #n_vehicles = lengths(vehicles),
+    #n_starships = lengths(starships)
+    
+    
+    ## REDUCED ----
+    
+    across("films":"starships", lengths, .names = "n_{.col}")
+  )
+```
+
+## 4.
+
+(3 pts)
+
+```{r}
+set.seed(1846689310)
+# Create a small version of flights 
+flights_small <- flights |> slice(sample(n(), size = 10))
+```
+
+**Reduce the repetition in this code, by writing two functions, and using `across()`.**
+
+```{r}
+# I was able to get away with 1 function rather than 2
+#   using purrr-style lambdas and ternary operators
+
+get_time <- function(x, time = "hour"){
+  stringr::str_sub(
+    x, 
+    # R's equivalent to ternary operators is the if() function
+    start = if(time == "hour") -4 else -2, 
+    end = if(time == "hour") -3 else -1
+  ) |> 
+    parse_number()
+}
+
+flights_small |> 
+  mutate(
+    ## UNREDUCED ----
+    
+    #sched_arr_time_hour = stringr::str_sub(sched_arr_time, -4, -3) |>
+    #  parse_number(),
+    #sched_arr_time_min = stringr::str_sub(sched_arr_time, -2, -1) |>
+    #  parse_number(),
+    #arr_time_hour = stringr::str_sub(arr_time, -4, -3) |>
+    #  parse_number(),
+    #arr_time_min = stringr::str_sub(arr_time, -2, -1) |>
+    #  parse_number(),
+    
+    
+    ## REDUCED ----
+    
+    across(
+      ends_with("arr_time"), 
+      .fns = list(
+        hour = ~ get_time(.x, time = "hour"), 
+        min = ~ get_time(.x, time = "min")), 
+      .names = "{.col}_{.fn}"
+    ),
+    .keep = "used"
+  ) 
+```
+
